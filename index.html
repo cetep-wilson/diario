@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>📘 Diário Cetep / LNAB — Single File</title>
+<style>
+:root{
+  --bg:#f4f7fb; --gov-dark:#013a66; --gov-mid:#0b66b2; --card:#ffffff;
+  --muted:#6b7280; --ok:#1e8e3e; --danger:#d64545; --accent:#2b7bd3;
+  --radius:12px; --shadow: 0 8px 22px rgba(3,37,64,0.08);
+}
+*{box-sizing:border-box}
+body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#0b2b3a;-webkit-font-smoothing:antialiased}
+.header{background:linear-gradient(90deg,var(--gov-dark),var(--gov-mid));color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px}
+.container{max-width:1100px;margin:16px auto;padding:12px}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.row{display:flex;gap:12px}
+.col{flex:1}
+.input{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef8;margin:8px 0;background:#fbfdff}
+.btn{background:var(--gov-mid);color:#fff;border:0;padding:9px 12px;border-radius:8px;cursor:pointer;font-weight:700}
+.btn.ghost{background:transparent;border:1px solid #dfe7ef;color:var(--gov-mid)}
+.small{font-size:13px;color:var(--muted)}
+.menu{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.menu button{background:#eef7ff;color:var(--gov-mid);border:0;padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:800;display:flex;align-items:center;gap:8px}
+.menu button.active{background:var(--gov-mid);color:#fff}
+.hidden{display:none}
+
+/* Tabs */
+.tab{display:none}
+.tab.active{display:block}
+
+/* Turmas list */
+.turma-item{background:#f8fbff;padding:10px;margin:8px 0;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+
+/* Horários */
+.slot-row{display:flex;gap:8px;align-items:center;margin-top:8px;padding:10px;border-radius:8px;background:#fff;border:1px solid #eef5fb}
+.slot-time{width:220px;color:#123556;font-weight:700}
+
+/* Calendar float */
+.calendar-float{
+  position:fixed; right:18px; bottom:18px; width:320px; max-width:94%; transition:0.25s; border-radius:12px;
+  box-shadow:0 20px 40px rgba(11,43,58,0.12); background:#fff;padding:10px; z-index:60;
+}
+.calendar-float.min{width:160px;padding:8px;display:flex;align-items:center;justify-content:space-between}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-cell{padding:8px;border-radius:6px;text-align:center}
+.cal-cell.out{color:#a0aab6;background:#fafbfc}
+.cal-cell.disabled{background:#f2f6fb;color:#a8b3c2}
+.cal-cell.active{background:linear-gradient(90deg,var(--gov-mid),#2f8fd8);color:#fff;cursor:pointer}
+.date-show{font-weight:700;color:var(--gov-mid)}
+
+/* presence list */
+.bloco-horario{border-radius:10px;padding:10px;margin-bottom:10px;background:#fff;border:1px solid #eef5fb}
+.bloco-horario h4{margin:0 0 8px;color:var(--gov-mid)}
+.pres-list{display:flex;flex-direction:column;gap:6px}
+.pres-line{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:8px}
+.pres-line .name{flex:1}
+.pres-btn{border-radius:8px;padding:6px 10px;border:1px solid var(--accent);background:#fff;cursor:pointer}
+.pres-btn.present{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Notas */
+.table{width:100%;border-collapse:collapse;margin-top:8px}
+.table th,.table td{border:1px solid #e9f0f7;padding:8px;text-align:center}
+.status-green{color:var(--ok);font-weight:800}
+.status-red{color:var(--danger);font-weight:800}
+
+/* notification bubble */
+.notif{
+  position:fixed; z-index:120; min-width:220px; max-width:360px; background:#fff; border-radius:10px; padding:10px 12px; box-shadow:0 8px 30px rgba(3,37,64,0.12);
+  display:flex; gap:10px; align-items:center; font-weight:700;
+}
+.notif .icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff}
+.notif.ok .icon{background:var(--ok)}
+.notif.err .icon{background:var(--danger)}
+.notif.info .icon{background:var(--gov-mid)}
+
+/* responsive */
+@media(max-width:900px){
+  .row{flex-direction:column}
+  .slot-time{width:170px}
+  .calendar-float{right:10px;bottom:10px}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="brand">📘 Diário Cetep / LNAB</div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div id="userBadge" class="small"></div>
+    <button id="btnLogout" class="btn ghost" title="Sair" style="display:none">Sair</button>
+  </div>
+</header>
+
+<main class="container">
+  <!-- LOGIN CARD -->
+  <section id="loginCard" class="card">
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <div style="min-width:320px">
+        <h3>Login profissional</h3>
+        <input id="loginUser" class="input" placeholder="Usuário (ex: prof1)" />
+        <input id="loginPass" class="input" type="password" placeholder="Senha" />
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="btnLogin" class="btn">🔐 Entrar</button>
+          <button id="btnOpenRegister" class="btn ghost" title="Cadastrar professor">➕</button>
+          <span id="loginMsg" class="small" style="color:var(--danger);margin-left:8px"></span>
+        </div>
+        <p class="small" style="margin-top:6px">Contas de teste: <b>admin / 1234</b>, <b>prof1 / 123</b></p>
+      </div>
+
+      <div style="min-width:320px">
+        <h3>Resumo rápido</h3>
+        <p class="small">Cadastre-se ou entre para começar. Observação: o cadastro abre ao clicar no botão <b>➕</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="card hidden" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:800">Menu</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btnReloadApp" class="btn ghost" title="Recarregar aplicativo">🔄 Recarregar</button>
+      </div>
+    </div>
+
+    <div class="menu" role="tablist" style="margin-top:12px">
+      <button class="active" data-tab="turmas">👥 Turmas</button>
+      <button data-tab="horario">⏰ Horário</button>
+      <button data-tab="presenca">📅 Presença</button>
+      <button data-tab="notas">🧮 Notas</button>
+      <button data-tab="recuperacao">🔁 Recuperação</button>
+    </div>
+
+    <!-- Turmas -->
+    <div id="tab-turmas" class="tab active" style="margin-top:12px">
+      <div class="row">
+        <div class="col">
+          <h3>Gerenciar Turmas</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="nomeTurma" class="input" placeholder="Nome da turma (ex: 1ºA)">
+            <input id="qtdAlunos" class="input" type="number" placeholder="Qtd. alunos" style="width:140px">
+          </div>
+          <div class="small" style="margin-top:6px">Dias da semana:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px" id="diasNovo">
+            <label><input type="checkbox" value="1"/> Seg</label>
+            <label><input type="checkbox" value="2"/> Ter</label>
+            <label><input type="checkbox" value="3"/> Qua</label>
+            <label><input type="checkbox" value="4"/> Qui</label>
+            <label><input type="checkbox" value="5"/> Sex</label>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="btnAddTurma" class="btn">➕ Adicionar</button>
+            <button id="btnExportTurmas" class="btn ghost">📥 Exportar CSV</button>
+          </div>
+          <div id="turmaSaveNote" class="small" style="margin-top:8px"></div>
+
+          <h4 style="margin-top:12px">Turmas cadastradas</h4>
+          <div id="listaTurmas"></div>
+        </div>
+
+        <div style="width:360px">
+          <h4>Editar Turma</h4>
+          <div id="editInfo" class="small">Selecione uma turma para editar.</div>
+          <div id="editForm" class="hidden" style="margin-top:8px">
+            <input id="editNome" class="input" placeholder="Nome"/>
+            <input id="editQtd" class="input" type="number" placeholder="Qtd alunos"/>
+            <div class="small">Dias:</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px" id="editDias">
+              <label><input type="checkbox" value="1"/> Seg</label>
+              <label><input type="checkbox" value="2"/> Ter</label>
+              <label><input type="checkbox" value="3"/> Qua</label>
+              <label><input type="checkbox" value="4"/> Qui</label>
+              <label><input type="checkbox" value="5"/> Sex</label>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="btnSaveEdit" class="btn">Salvar</button>
+              <button id="btnCancelEdit" class="btn ghost">Cancelar</button>
+            </div>
+            <div style="margin-top:10px">
+              <h4>Alunos</h4>
+              <div id="alunosList"></div>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <input id="addAlunoName" class="input" placeholder="Nome do aluno" />
+                <button id="btnAddAluno" class="btn">➕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Horário -->
+    <div id="tab-horario" class="tab" style="margin-top:12px">
+      <h3>Horário (6 slots fixos)</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="weekdaySelect" class="input" style="width:200px"></select>
+        <button id="btnLoadSlots" class="btn">Carregar</button>
+        <button id="btnSaveSlots" class="btn ghost">Salvar</button>
+      </div>
+      <div id="slotsArea" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Presença -->
+    <div id="tab-presenca" class="tab" style="margin-top:12px">
+      <h3>Presença — selecione turma e dia</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="selTurmaPres" class="input" style="width:360px"></select>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="btnReloadPres" class="btn ghost" title="Recarregar presença">🔄</button>
+        </div>
+        <div class="small">Mês atual</div>
+      </div>
+
+      <div class="pres-grid" style="margin-top:12px">
+        <div style="flex:1">
+          <div id="calendarInfo" class="small">Escolha a turma e selecione um dia no calendário flutuante (canto inferior direito).</div>
+          <div id="listaPresencaArea" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- floating calendar (bottom-right) -->
+      <div id="calendarFloat" class="calendar-float" role="dialog" aria-label="Calendário">
+        <div class="cal-head">
+          <div><strong id="calTitle"></strong></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button id="calToggle" class="btn ghost" title="Minimizar/reabrir">📅</button>
+            <button id="calClose" class="btn ghost" title="Fechar">✖</button>
+          </div>
+        </div>
+        <div id="calContent">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <select id="calMonth"></select>
+            <select id="calYear"></select>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div id="calCollapsed" class="hidden" style="display:flex;justify-content:space-between;align-items:center">
+          <div class="date-show" id="dateSelectedShow"></div>
+          <button id="calExpand" class="btn ghost">Abrir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notas -->
+    <div id="tab-notas" class="tab" style="margin-top:12px">
+      <h3>Notas (3 unidades)</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="selTurmaNotas" class="input" style="width:360px"></select>
+        <button id="btnLoadNotas" class="btn">Carregar</button>
+        <button id="btnExportNotas" class="btn ghost">Export CSV</button>
+      </div>
+      <div id="notasArea" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Recuperação -->
+    <div id="tab-recuperacao" class="tab" style="margin-top:12px">
+      <h3>Recuperação</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="selTurmaRec" class="input" style="width:360px"></select>
+        <button id="btnLoadRec" class="btn">Carregar</button>
+      </div>
+      <div id="recArea" style="margin-top:8px"></div>
+    </div>
+
+  </section>
+</main>
+
+<!-- Register modal (simple overlay) -->
+<div id="regModal" style="position:fixed;left:0;top:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(6,18,30,0.4);z-index:80">
+  <div style="width:420px;max-width:94%;background:#fff;padding:18px;border-radius:12px;box-shadow:0 20px 40px rgba(3,37,64,0.12)">
+    <h3>Cadastrar Professor</h3>
+    <input id="regUser" class="input" placeholder="Usuário novo" />
+    <input id="regPass" class="input" placeholder="Senha" />
+    <div class="small">Dias permitidos para marcar presença:</div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <label><input type="checkbox" class="reg-day" value="1"/> Seg</label>
+      <label><input type="checkbox" class="reg-day" value="2"/> Ter</label>
+      <label><input type="checkbox" class="reg-day" value="3"/> Qua</label>
+      <label><input type="checkbox" class="reg-day" value="4"/> Qui</label>
+      <label><input type="checkbox" class="reg-day" value="5"/> Sex</label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="btnRegister" class="btn">Salvar</button>
+      <button id="btnCancelRegister" class="btn ghost">Cancelar</button>
+    </div>
+    <div id="regMsg" class="small" style="color:var(--danger);margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- notification container area (we'll position dynamically) -->
+<div id="notifRoot"></div>
+
+<script>
+/* ---------- Storage keys & seed ---------- */
+const APP_KEY = "diario_single_v2";
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(APP_KEY)||'{}') }catch(e){ return {}; } }
+function saveStore(s){ localStorage.setItem(APP_KEY, JSON.stringify(s)); }
+let store = loadStore();
+// seed if empty
+if(!store || Object.keys(store).length===0){
+  store = {
+    admin:{ senha:"1234", dias:[1,2,3,4,5], turmas:{}, horarios:{1:["","","","","",""],2:["","","","","",""],3:["","","","","",""],4:["","","","","",""],5:["","","","","",""]}},
+    prof1:{ senha:"123", dias:[2,4], turmas:{"3tim3":{qtd:3,alunos:["Jonatas Gomes","Wilson Gonçalves","Guilherme Vinícius"],notas:[[6,5,4],[7,8,6],[3,4,2]],recovery:[null,null,null],presencas:{},dias:[2,4]} }, horarios:{1:["","","","","",""],2:["3tim2","3tim2","","","3tim2",""],3:["","","","","",""],4:["3tim3","","","","",""],5:["","","","","",""]} }
+  };
+  saveStore(store);
+}
+
+/* ---------- Auth helpers ---------- */
+function requireAuth(){ return sessionStorage.getItem("diario_user"); }
+function getUserStore(){
+  const u = requireAuth();
+  if(!u) return null;
+  store = loadStore();
+  if(!store[u]) store[u] = { senha:"", dias:[], turmas:{}, horarios:{1:["","","","","",""],2:["","","","","",""],3:["","","","","",""],4:["","","","","",""],5:["","","","","",""]} };
+  return store[u];
+}
+
+/* ---------- UI helpers: notification near element ---------- */
+function showNotifNear(el, text, type='ok', duration=2800){
+  // get bounding rect
+  if(!el){ showNotifFloating(text,type,duration); return; }
+  const r = el.getBoundingClientRect();
+  const n = document.createElement('div'); n.className = `notif ${type==='ok'?'ok':type==='err'?'err':'info'}`;
+  n.innerHTML = `<div class="icon">${type==='ok'?'✅':type==='err'?'❌':'ℹ️'}</div><div>${text}</div>`;
+  // position fixed near the element (to the right, or above if off-screen)
+  document.body.appendChild(n);
+  // compute position
+  const left = Math.min(window.innerWidth - 20 - n.offsetWidth, Math.max(8, r.right + 8));
+  let top = r.top + window.scrollY;
+  if(top + n.offsetHeight > window.innerHeight + window.scrollY - 20) top = r.top + window.scrollY - n.offsetHeight - 8;
+  n.style.position = 'absolute'; n.style.left = left + 'px'; n.style.top = top + 'px';
+  setTimeout(()=>{ n.style.transition='all .25s ease'; n.style.opacity='0'; n.style.transform='translateY(-8px)'; }, duration - 220);
+  setTimeout(()=> n.remove(), duration);
+}
+function showNotifFloating(text, type='ok', duration=2800){
+  const n = document.createElement('div'); n.className = `notif ${type==='ok'?'ok':type==='err'?'err':'info'}`;
+  n.innerHTML = `<div class="icon">${type==='ok'?'✅':type==='err'?'❌':'ℹ️'}</div><div>${text}</div>`;
+  document.body.appendChild(n);
+  // center bottom by default
+  n.style.left = (window.innerWidth/2 - n.offsetWidth/2) + 'px';
+  n.style.bottom = '22px';
+  n.style.position = 'fixed';
+  setTimeout(()=>{ n.style.opacity='0'; n.style.transform='translateY(8px)'; }, duration - 220);
+  setTimeout(()=> n.remove(), duration);
+}
+
+/* ---------- Login/Register actions ---------- */
+const loginCard = document.getElementById('loginCard');
+const dashboard = document.getElementById('dashboard');
+const userBadge = document.getElementById('userBadge');
+const btnLogout = document.getElementById('btnLogout');
+
+function showUserInfo(){
+  const u = requireAuth();
+  userBadge.textContent = u ? `Professor: ${u}` : '';
+  btnLogout.style.display = u ? 'inline-flex' : 'none';
+}
+
+// login
+document.getElementById('btnLogin').addEventListener('click', ()=>{
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const msg = document.getElementById('loginMsg');
+  msg.textContent = '';
+  store = loadStore();
+  if(!u || !p){ msg.textContent = 'Preencha usuário e senha'; return; }
+  if(!store[u] || store[u].senha !== p){ msg.textContent = 'Usuário ou senha incorretos'; return; }
+  sessionStorage.setItem('diario_user', u);
+  // show dashboard
+  loginCard.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.menu button[data-tab="presenca"]').classList.add('active');
+  activateTab('presenca');
+  refreshAll();
+  showUserInfo();
+  showNotifFloating(`✅ Sucesso: login realizado (${u})`, 'ok', 2000);
+});
+
+// open register modal
+document.getElementById('btnOpenRegister').addEventListener('click', ()=> {
+  document.getElementById('regModal').style.display = 'flex';
+});
+
+// register save
+document.getElementById('btnRegister').addEventListener('click', ()=>{
+  const u = document.getElementById('regUser').value.trim();
+  const p = document.getElementById('regPass').value.trim();
+  const days = Array.from(document.querySelectorAll('.reg-day:checked')).map(c=>parseInt(c.value,10));
+  const regMsg = document.getElementById('regMsg');
+  regMsg.textContent = '';
+  store = loadStore();
+  if(!u || !p){ regMsg.textContent = 'Preencha usuário e senha'; return; }
+  if(store[u]){ regMsg.textContent = 'Usuário já existe'; return; }
+  store[u] = { senha:p, dias:days, turmas:{}, horarios:{1:["","","","","",""],2:["","","","","",""],3:["","","","","",""],4:["","","","","",""],5:["","","","","",""]} };
+  saveStore(store);
+  regMsg.style.color = 'green'; regMsg.textContent = 'Professor cadastrado';
+  showNotifFloating('✅ Sucesso: professor cadastrado', 'ok', 1800);
+  setTimeout(()=>{ document.getElementById('regModal').style.display='none'; document.getElementById('regUser').value=''; document.getElementById('regPass').value=''; regMsg.textContent=''; },900);
+});
+
+// register cancel
+document.getElementById('btnCancelRegister').addEventListener('click', ()=>{
+  document.getElementById('regModal').style.display = 'none';
+});
+
+// logout
+btnLogout.addEventListener('click', ()=>{
+  sessionStorage.removeItem('diario_user');
+  dashboard.classList.add('hidden');
+  loginCard.classList.remove('hidden');
+  showUserInfo();
+});
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.menu button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.menu button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    activateTab(b.dataset.tab);
+  });
+});
+function activateTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const el = document.getElementById('tab-'+tab);
+  if(el) el.classList.add('active');
+  if(tab==='presenca'){ renderCalendar(); renderPresenceUI(); }
+  if(tab==='horario'){ populateWeekdays(); renderSlots(2); }
+  if(tab==='notas'){ populateTurmaSelectsForNotas(); }
+  if(tab==='recuperacao'){ populateRecSelect(); }
+}
+
+/* ---------- Turmas ---------- */
+function refreshAll(){
+  populateTurmaLists();
+  populateWeekdays();
+  populateTurmaSelects();
+  populateTurmaSelectsForNotas();
+  populateRecSelect();
+  updateResumo();
+  showUserInfo();
+}
+
+/* get current professor store (object) */
+function getProf(){
+  const user = requireAuth();
+  if(!user) return null;
+  store = loadStore();
+  if(!store[user]) store[user] = { senha:'', dias:[], turmas:{}, horarios:{1:["","","","","",""],2:["","","","","",""],3:["","","","","",""],4:["","","","","",""],5:["","","","","",""]} };
+  return store[user];
+}
+
+/* populate turma list and controls */
+function populateTurmaLists(){
+  const prof = getProf(); if(!prof) return;
+  const div = document.getElementById('listaTurmas'); div.innerHTML = '';
+  const keys = Object.keys(prof.turmas || {});
+  if(keys.length===0){ div.innerHTML = "<div class='small'>Nenhuma turma cadastrada.</div>"; return; }
+  keys.forEach(name=>{
+    const t = prof.turmas[name];
+    const item = document.createElement('div'); item.className = 'turma-item';
+    item.innerHTML = `<div><strong>${name}</strong><div class="small">Alunos: ${t.qtd||t.alunos.length||0} | Dias: ${(t.dias||[]).map(n=>['Seg','Ter','Qua','Qui','Sex'][n-1]).join(", ")}</div></div>
+      <div style="display:flex;gap:8px"><button class="btn" onclick="openEdit('${encodeURIComponent(name)}')">✏️</button><button class="btn ghost" onclick="deleteTurma('${encodeURIComponent(name)}')">🗑</button><button class="btn" onclick="openTurma('${encodeURIComponent(name)}')">Abrir</button></div>`;
+    div.appendChild(item);
+  });
+}
+
+/* add turma */
+document.getElementById('btnAddTurma').addEventListener('click', ()=>{
+  const prof = getProf(); if(!prof) return;
+  const nome = document.getElementById('nomeTurma').value.trim();
+  const qtd = parseInt(document.getElementById('qtdAlunos').value||'0',10) || 0;
+  const dias = Array.from(document.querySelectorAll('#diasNovo input[type=checkbox]:checked')).map(c=>parseInt(c.value,10));
+  if(!nome){ alert('Informe o nome da turma'); return; }
+  if(!prof.turmas) prof.turmas = {};
+  if(prof.turmas[nome]){ alert('Turma já existe'); return; }
+  const alunos = []; for(let i=0;i<qtd;i++) alunos.push(`Aluno ${i+1}`);
+  const notas = alunos.map(()=>[0,0,0]);
+  prof.turmas[nome] = { qtd:qtd, alunos, notas, recovery:alunos.map(()=>null), presencas:{}, dias };
+  store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  document.getElementById('nomeTurma').value=''; document.getElementById('qtdAlunos').value='';
+  populateTurmaLists(); populateTurmaSelects(); populateTurmaSelectsForNotas(); populateWeekdays(); populateRecSelect();
+  showNotifNear(document.getElementById('btnAddTurma'), `✅ Sucesso: turma "${nome}" salva`, 'ok', 2400);
+});
+
+/* delete turma */
+function deleteTurma(enc){
+  const name = decodeURIComponent(enc);
+  const prof = getProf(); if(!prof) return;
+  if(!confirm(`Remover turma "${name}" ?`)) return;
+  delete prof.turmas[name];
+  // remove from horarios
+  Object.keys(prof.horarios||{}).forEach(k=> prof.horarios[k] = prof.horarios[k].map(s=> s===name ? "" : s));
+  store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  populateTurmaLists(); populateTurmaSelects(); populateTurmaSelectsForNotas(); populateWeekdays(); populateRecSelect();
+  showNotifFloating(`✅ Sucesso: turma "${name}" removida`, 'ok', 1800);
+}
+
+/* edit turma */
+function openEdit(enc){
+  const name = decodeURIComponent(enc);
+  const prof = getProf(); if(!prof) return;
+  const t = prof.turmas[name]; if(!t) return alert('Turma não encontrada');
+  document.getElementById('editForm').classList.remove('hidden'); document.getElementById('editInfo').classList.add('hidden');
+  document.getElementById('editNome').value = name; document.getElementById('editQtd').value = t.qtd || t.alunos.length || 0;
+  document.querySelectorAll('#editDias input[type=checkbox]').forEach(cb=> cb.checked = (t.dias||[]).includes(parseInt(cb.value,10)));
+  renderAlunosList(name);
+  document.getElementById('btnSaveEdit').onclick = ()=>{
+    const newName = document.getElementById('editNome').value.trim();
+    const newQtd = parseInt(document.getElementById('editQtd').value||'0',10);
+    const newDays = Array.from(document.querySelectorAll('#editDias input[type=checkbox]:checked')).map(c=>parseInt(c.value,10));
+    if(!newName){ alert('Nome vazio'); return; }
+    if(newName !== name){
+      if(prof.turmas[newName]){ alert('Já existe turma com esse nome'); return; }
+      prof.turmas[newName] = prof.turmas[name]; delete prof.turmas[name];
+    }
+    const ref = prof.turmas[newName];
+    const cur = ref.alunos.length || 0;
+    if(newQtd > cur){ for(let i=cur;i<newQtd;i++){ ref.alunos.push(`Aluno ${i+1}`); ref.notas.push([0,0,0]); ref.recovery.push(null); } }
+    else if(newQtd < cur){ ref.alunos = ref.alunos.slice(0,newQtd); ref.notas = ref.notas.slice(0,newQtd); ref.recovery = ref.recovery.slice(0,newQtd); }
+    ref.qtd = newQtd; ref.dias = newDays;
+    store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+    populateTurmaLists(); populateTurmaSelects(); populateTurmaSelectsForNotas(); populateWeekdays(); populateRecSelect();
+    document.getElementById('editForm').classList.add('hidden'); document.getElementById('editInfo').classList.remove('hidden');
+    showNotifNear(document.getElementById('btnSaveEdit'), `✅ Sucesso: turma "${newName}" atualizada`, 'ok', 2200);
+  };
+  document.getElementById('btnCancelEdit').onclick = ()=>{ document.getElementById('editForm').classList.add('hidden'); document.getElementById('editInfo').classList.remove('hidden'); };
+}
+
+/* Alunos list for edit */
+function renderAlunosList(turmaName){
+  const prof = getProf(); if(!prof) return;
+  const t = prof.turmas[turmaName]; const div = document.getElementById('alunosList'); div.innerHTML='';
+  t.alunos.forEach((al,idx)=>{ const d=document.createElement('div'); d.className='turma-item'; d.innerHTML = `<div>${idx+1}. ${al}</div><div style="display:flex;gap:8px"><button class="btn ghost" onclick="removeAluno('${encodeURIComponent(turmaName)}',${idx})">Remover</button></div>`; div.appendChild(d); });
+}
+document.getElementById('btnAddAluno').addEventListener('click', ()=>{
+  const name = document.getElementById('editNome').value.trim();
+  const prof = getProf(); if(!prof) return;
+  if(!name || !prof.turmas[name]){ alert('Selecione/abra a turma primeiro'); return; }
+  const nm = document.getElementById('addAlunoName').value.trim();
+  if(!nm){ alert('Digite o nome do aluno'); return; }
+  prof.turmas[name].alunos.push(nm); prof.turmas[name].notas.push([0,0,0]); prof.turmas[name].recovery.push(null); prof.turmas[name].qtd = prof.turmas[name].alunos.length;
+  store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  renderAlunosList(name); populateTurmaLists();
+  document.getElementById('addAlunoName').value='';
+  showNotifNear(document.getElementById('btnAddAluno'), `✅ Sucesso: aluno "${nm}" adicionado`, 'ok', 2000);
+});
+function removeAluno(enc, idx){ const name=decodeURIComponent(enc); const prof=getProf(); if(!prof) return; const t=prof.turmas[name]; const removed = t.alunos.splice(idx,1); t.notas.splice(idx,1); t.recovery.splice(idx,1); t.qtd = t.alunos.length; store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store); renderAlunosList(name); populateTurmaLists(); showNotifFloating(`✅ Sucesso: aluno removido`, 'ok', 1600); }
+
+/* ---------- Horários ---------- */
+function populateWeekdays(){ const sel=document.getElementById('weekdaySelect'); sel.innerHTML=''; for(let i=1;i<=5;i++){ const o=document.createElement('option'); o.value=i; o.textContent = ['Seg','Ter','Qua','Qui','Sex'][i-1]; sel.appendChild(o); } document.getElementById('btnLoadSlots').onclick = ()=> renderSlots(parseInt(sel.value,10)); document.getElementById('btnSaveSlots').onclick = ()=> saveSlots(parseInt(sel.value,10)); }
+function renderSlots(weekday){
+  const prof = getProf(); if(!prof) return;
+  const area = document.getElementById('slotsArea'); area.innerHTML='';
+  if(!prof.horarios) prof.horarios = {1:["","","","","",""],2:["","","","","",""],3:["","","","","",""],4:["","","","","",""],5:["","","","","",""]};
+  const arr = prof.horarios[weekday] || ["","","","","",""];
+  // label times - ensure 6 slots: 1,2,3,4,5(interval?),6
+  const labelTimes = ["1ª 07:00–07:45","2ª 07:45–08:30","3ª 08:30–09:15","4ª 09:15–10:00","5ª 10:20–11:05","6ª 11:05–11:50"];
+  for(let i=0;i<6;i++){
+    const row = document.createElement('div'); row.className='slot-row';
+    const lab = document.createElement('div'); lab.className='slot-time'; lab.textContent = labelTimes[i];
+    const sel = document.createElement('select'); sel.style.flex='1';
+    const em = document.createElement('option'); em.value=''; em.textContent='(vazio)'; sel.appendChild(em);
+    Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; if(tn===arr[i]) o.selected=true; sel.appendChild(o); });
+    row.appendChild(lab); row.appendChild(sel); area.appendChild(row);
+  }
+}
+function saveSlots(weekday){
+  const prof = getProf(); if(!prof) return;
+  const selects = document.querySelectorAll('#slotsArea select');
+  const arr = []; selects.forEach((s,i)=> arr[i]=s.value);
+  prof.horarios[weekday] = arr; store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  showNotifNear(document.getElementById('btnSaveSlots'), `✅ Sucesso: horários salvos`, 'ok', 1800);
+}
+
+/* ---------- Calendar & Presence ---------- */
+/* Floating calendar logic */
+const calFloat = document.getElementById('calendarFloat');
+const calGrid = document.getElementById('calGrid');
+const calTitle = document.getElementById('calTitle');
+const calMonth = document.getElementById('calMonth');
+const calYear = document.getElementById('calYear');
+const calToggle = document.getElementById('calToggle');
+const calClose = document.getElementById('calClose');
+const calContent = document.getElementById('calContent');
+const calCollapsed = document.getElementById('calCollapsed');
+const dateSelectedShow = document.getElementById('dateSelectedShow');
+let selectedDateIso = null;
+
+function renderCalendar(){
+  const now = new Date();
+  calMonth.innerHTML = ''; calYear.innerHTML = '';
+  const months = Array.from({length:12},(_,i)=> new Date(0,i).toLocaleString('pt-BR',{month:'long'}));
+  months.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=m; if(i===now.getMonth()) o.selected=true; calMonth.appendChild(o); });
+  const thisYear = now.getFullYear();
+  for(let y=thisYear-1;y<=thisYear+1;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===thisYear) o.selected=true; calYear.appendChild(o); }
+  drawCal();
+}
+function drawCal(){
+  calGrid.innerHTML='';
+  const month = parseInt(calMonth.value||0,10); const year = parseInt(calYear.value||new Date().getFullYear(),10);
+  calTitle.textContent = `${new Date(year,month,1).toLocaleString('pt-BR',{month:'long'})} ${year}`;
+  // header days
+  ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].forEach(h=>{ const hd=document.createElement('div'); hd.className='cal-cell'; hd.style.fontWeight='700'; hd.textContent=h; calGrid.appendChild(hd); });
+  const firstDay = new Date(year,month,1).getDay(); const daysInMonth = new Date(year,month+1,0).getDate();
+  for(let i=0;i<firstDay;i++){ const c=document.createElement('div'); c.className='cal-cell out'; calGrid.appendChild(c); }
+  // get professor and selected turma to show active days
+  const prof = getProf();
+  const selTurma = document.getElementById('selTurmaPres').value;
+  const diasTurma = (prof && prof.turmas[selTurma]) ? (prof.turmas[selTurma].dias || []) : [];
+  for(let d=1; d<=daysInMonth; d++){
+    const dt = new Date(year,month,d); const wk = dt.getDay();
+    const cell = document.createElement('div'); cell.className='cal-cell'; cell.textContent = d;
+    // if turma has that weekday -> active clickable, else disabled
+    if(diasTurma.includes(wk)){
+      cell.classList.add('active');
+      cell.onclick = ()=> onSelectDate(dt);
+    } else {
+      cell.classList.add('disabled');
+    }
+    calGrid.appendChild(cell);
+  }
+}
+calMonth.onchange = drawCal; calYear.onchange = drawCal;
+calToggle.onclick = ()=> toggleCalendar();
+document.getElementById('calExpand').onclick = ()=> expandCalendar();
+calClose.onclick = ()=> calFloat.classList.add('hidden');
+
+function toggleCalendar(){
+  if(calFloat.classList.contains('min')) expandCalendar();
+  else {
+    calFloat.classList.add('min');
+    calContent.classList.add('hidden');
+    calCollapsed.classList.remove('hidden');
+    if(selectedDateIso) dateSelectedShow.textContent = new Date(selectedDateIso).toLocaleDateString('pt-BR');
+  }
+}
+function expandCalendar(){
+  calFloat.classList.remove('min');
+  calContent.classList.remove('hidden');
+  calCollapsed.classList.add('hidden');
+}
+
+function onSelectDate(dt){
+  selectedDateIso = dt.toISOString().slice(0,10);
+  dateSelectedShow.textContent = dt.toLocaleDateString('pt-BR');
+  calFloat.classList.add('min'); calContent.classList.add('hidden'); calCollapsed.classList.remove('hidden');
+  renderPresenceForDate(selectedDateIso);
+}
+
+/* Presence rendering */
+function populateTurmaSelects(){
+  const sel = document.getElementById('selTurmaPres'); sel.innerHTML = "<option value=''>-- selecione turma --</option>";
+  const prof = getProf(); if(!prof) return;
+  Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); });
+  sel.onchange = ()=>{ drawCal(); renderPresenceUI(); };
+}
+function renderPresenceUI(){
+  renderCalendar();
+  if(selectedDateIso) renderPresenceForDate(selectedDateIso);
+  else document.getElementById('listaPresencaArea').innerHTML = "<div class='small'>Selecione um dia no calendário flutuante.</div>";
+}
+document.getElementById('btnReloadPres').addEventListener('click', ()=> renderPresenceUI());
+
+function renderPresenceForDate(isoDate){
+  const selTurma = document.getElementById('selTurmaPres').value;
+  const prof = getProf(); if(!prof) return;
+  const area = document.getElementById('listaPresencaArea'); area.innerHTML = '';
+  if(!selTurma){ area.innerHTML = "<div class='small'>Selecione uma turma antes.</div>"; return; }
+  const turma = prof.turmas[selTurma]; if(!turma){ area.innerHTML = "<div class='small'>Turma inválida.</div>"; return; }
+  turma.presencas = turma.presencas || {};
+  turma.presencas[isoDate] = turma.presencas[isoDate] || {}; // slot -> array
+  const dt = new Date(isoDate); const wk = dt.getDay();
+  const daySlots = (prof.horarios && prof.horarios[wk]) ? prof.horarios[wk] : ["","","","","",""];
+  // ensure 6 slots array
+  for(let slot=0; slot<6; slot++){
+    const card = document.createElement('div'); card.className='bloco-horario';
+    const labelTimes = ["1ª 07:00–07:45","2ª 07:45–08:30","3ª 08:30–09:15","4ª 09:15–10:00","5ª 10:20–11:05","6ª 11:05–11:50"];
+    const title = document.createElement('h4'); title.textContent = labelTimes[slot]; card.appendChild(title);
+    const sub = document.createElement('div'); sub.className='small'; sub.style.marginBottom='8px';
+    sub.textContent = (daySlots[slot] && daySlots[slot] !== "") ? daySlots[slot] : "(sem turma)";
+    card.appendChild(sub);
+    if(daySlots[slot] !== selTurma){
+      const note = document.createElement('div'); note.className='small'; note.textContent = "—";
+      card.appendChild(note);
+    } else {
+      const list = document.createElement('div'); list.className='pres-list';
+      turma.presencas[isoDate][slot] = turma.presencas[isoDate][slot] || Array(turma.alunos.length).fill("P");
+      turma.alunos.forEach((al,idx)=>{
+        const row = document.createElement('div'); row.className='pres-line';
+        const name = document.createElement('div'); name.className='name'; name.textContent = `${idx+1}. ${al}`;
+        const btn = document.createElement('button'); btn.className='pres-btn';
+        btn.dataset.idx = idx; btn.dataset.slot = slot; btn.dataset.al = al;
+        if(turma.presencas[isoDate][slot][idx] === "F"){ btn.classList.remove('present'); btn.textContent = "❌"; } else { btn.classList.add('present'); btn.textContent = "✅"; }
+        btn.onclick = (e)=> togglePresenceBtn(e.currentTarget, isoDate, selTurma);
+        row.appendChild(name); row.appendChild(btn); list.appendChild(row);
+      });
+      card.appendChild(list);
+    }
+    area.appendChild(card);
+  }
+  // save
+  store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  updateResumo();
+}
+
+/* toggle presence and replicate to neighbor slots with same turma */
+function togglePresenceBtn(button, isoDate, turmaName){
+  const idx = parseInt(button.dataset.idx,10);
+  const slot = parseInt(button.dataset.slot,10);
+  const prof = getProf(); if(!prof) return;
+  const turma = prof.turmas[turmaName];
+  const arr = turma.presencas[isoDate][slot];
+  if(arr[idx] === "F"){ arr[idx] = "P"; }
+  else { arr[idx] = "F"; }
+  // replicate to previous and next if same turma assigned in schedule for that day
+  const dt = new Date(isoDate); const wk = dt.getDay();
+  const slotsOfDay = prof.horarios && prof.horarios[wk] ? prof.horarios[wk] : ["","","","","",""];
+  // previous
+  if(slot-1 >= 0 && slotsOfDay[slot-1] === turmaName){
+    turma.presencas[isoDate][slot-1] = turma.presencas[isoDate][slot-1] || Array(turma.alunos.length).fill("P");
+    turma.presencas[isoDate][slot-1][idx] = arr[idx];
+  }
+  // next
+  if(slot+1 <= 5 && slotsOfDay[slot+1] === turmaName){
+    turma.presencas[isoDate][slot+1] = turma.presencas[isoDate][slot+1] || Array(turma.alunos.length).fill("P");
+    turma.presencas[isoDate][slot+1][idx] = arr[idx];
+  }
+  store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
+  // re-render to update UI and show a small notif near clicked button
+  renderPresenceForDate(isoDate);
+  showNotifNear(button, arr[idx] === 'F' ? '❌ Faltou' : '✅ Presente', arr[idx] === 'F' ? 'err' : 'ok', 1200);
+}
+
+/* ---------- Notas ---------- */
+function populateTurmaSelectsForNotas(){
+  const sel = document.getElementById('selTurmaNotas'); sel.innerHTML = "<option value=''>-- selecione turma --</option>";
+  const prof = getProf(); if(!prof) return;
+  Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); });
+  document.getElementById('btnLoadNotas').onclick = ()=> loadNotas();
+}
+function loadNotas(){
+  const prof = getProf(); if(!prof) return;
+  const turmaName = document.getElementById('selTurmaNotas').value; const area=document.getElementById('notasArea'); area.innerHTML='';
+  if(!turmaName) return area.textContent='Selecione turma';
+  const t = prof.turmas[turmaName];
+  const table = document.createElement('table'); table.className='table';
+  table.innerHTML = `<thead><tr><th>Aluno</th><th>U1 (0-10)</th><th>U2</th><th>U3</th><th>Total (0-30)</th><th>Média (÷3)</th><th>Status</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  t.alunos.forEach((al,idx)=>{
+    const notas = t.notas[idx] || [0,0,0];
+    const total = Number(notas[0]||0)+Number(notas[1]||0)+Number(notas[2]||0);
+    const media = (total/3).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="text-align:left;padding-left:8px">${al}</td>
+      <td><input type="number" min="0" max="10" value="${notas[0]||0}" data-i="${idx}" data-u="0" class="notaInp"/></td>
+      <td><input type="number" min="0" max="10" value="${notas[1]||0}" data-i="${idx}" data-u="1" class="notaInp"/></td>
+      <td><input type="number" min="0" max="10" value="${notas[2]||0}" data-i="${idx}" data-u="2" class="notaInp"/></td>
+      <td>${total}</td><td>${media}</td><td>${ total>=15 ? '<span class="status-green">Aprovado</span>' : '<span class="status-red">Recuperação</span>' }</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody); area.appendChild(table);
+  area.querySelectorAll('.notaInp').forEach(inp=>{
+    inp.onchange = (e)=>{
+      const i=parseInt(e.target.dataset.i,10), uidx=parseInt(e.target.dataset.u,10);
+      let v = Number(e.target.value)||0; if(v<0) v=0; if(v>10) v=10;
+      t.notas[i][uidx] = v; store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store); loadNotas();
+      showNotifNear(e.target, '✅ Nota atualizada', 'ok', 1200);
+    };
+  });
+}
+
+/* ---------- Recuperação ---------- */
+function populateRecSelect(){ const sel=document.getElementById('selTurmaRec'); sel.innerHTML = "<option value=''>-- selecione turma --</option>"; const prof=getProf(); if(!prof) return; Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); }); document.getElementById('btnLoadRec').onclick = ()=> loadRec(); }
+function loadRec(){
+  const prof=getProf(); if(!prof) return; const name=document.getElementById('selTurmaRec').value; const area=document.getElementById('recArea'); area.innerHTML=''; if(!name) return area.textContent='Selecione turma.'; const t=prof.turmas[name];
+  t.alunos.forEach((al,idx)=>{
+    const total = (t.notas[idx]||[0,0,0]).reduce((a,b)=>a+Number(b||0),0);
+    if(total>=15) return;
+    const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.marginBottom='8px';
+    const left = document.createElement('div'); left.innerHTML = `<strong>${al}</strong><div class="small">Total: ${total}/30</div>`;
+    const right = document.createElement('div'); const inp=document.createElement('input'); inp.type='number'; inp.min=0; inp.max=10; inp.style.width='80px'; inp.value = t.recovery && t.recovery[idx]!=null ? t.recovery[idx] : "";
+    const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Salvar';
+    const status = document.createElement('div'); status.style.fontWeight='800';
+    function updateStatus(){ const r = t.recovery && t.recovery[idx]; if(r==null || r==="") status.innerHTML = '<span class="status-red">Recuperação</span>'; else if(Number(r)>=5) status.innerHTML = '<span class="status-green">Aprovado</span>'; else status.innerHTML = '<span class="status-red">Reprovado</span>'; }
+    updateStatus();
+    btn.onclick = ()=>{ let v=Number(inp.value)||0; if(v<0)v=0; if(v>10)v=10; t.recovery = t.recovery||Array(t.alunos.length).fill(null); t.recovery[idx]=v; store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store); updateStatus(); showNotifNear(btn, '✅ Recuperação salva', 'ok', 1500); };
+    right.appendChild(inp); right.appendChild(btn); right.appendChild(status);
+    row.appendChild(left); row.appendChild(right); area.appendChild(row);
+  });
+  if(area.innerHTML==="") area.textContent="Nenhum aluno em recuperação.";
+}
+
+/* ---------- Export CSV simple (presença/ notas) ---------- */
+function exportCSV(filename, rows){
+  const csv = rows.map(r => r.map(field => `"${String(field).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link); link.click(); link.remove();
+}
+
+/* ---------- Utilities ---------- */
+function updateResumo(){
+  const user = requireAuth(); if(!user) return;
+  const prof = getProf();
+  let totalTurmas = Object.keys(prof.turmas||{}).length;
+  let totalAlunos = 0; let totalFaltas = 0;
+  Object.values(prof.turmas||{}).forEach(t=>{
+    totalAlunos += t.alunos.length;
+    Object.values(t.presencas||{}).forEach(dayObj=>{
+      Object.values(dayObj).forEach(slotArr=>{
+        if(Array.isArray(slotArr)) slotArr.forEach(s=>{ if(s==="F") totalFaltas++; });
+      });
+    });
+  });
+  console.log(`Resumo: turmas ${totalTurmas}, alunos ${totalAlunos}, faltas ${totalFaltas}`);
+}
+
+/* open turma quick */
+function openTurma(enc){
+  const name = decodeURIComponent(enc);
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.menu button[data-tab="presenca"]').classList.add('active'); activateTab('presenca');
+  setTimeout(()=>{ document.getElementById('selTurmaPres').value = name; renderCalendar(); renderPresenceUI(); },80);
+}
+
+/* on load */
+window.addEventListener('load', ()=>{
+  const u = sessionStorage.getItem('diario_user');
+  if(u && store[u]){
+    loginCard.classList.add('hidden'); dashboard.classList.remove('hidden');
+    document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+    document.querySelector('.menu button[data-tab="presenca"]').classList.add('active');
+    activateTab('presenca'); refreshAll(); setTimeout(()=>{ populateTurmaSelects(); renderCalendar(); expandCalendar(); },120);
+  } else {
+    loginCard.classList.remove('hidden'); dashboard.classList.add('hidden');
+  }
+  renderCalendar();
+});
+
+/* small helpers bindings */
+document.getElementById('btnOpenRegister').addEventListener('dblclick', ()=> alert('Use o botão + apenas uma vez.')); // just to avoid accidental double actions
+document.getElementById('btnOpenRegister').addEventListener('keydown', ()=>{}); // no-op to avoid linter warnings
+document.getElementById('btnReloadApp').addEventListener('click', ()=> location.reload());
+
+/* populate selects used elsewhere */
+function populateTurmaSelects(){ populateTurmaSelects(); } // wrapper (no-op)
+/* initial call to ensure selects updated when needed */
+</script>
+</body>
+</html>
