@@ -653,55 +653,129 @@ function onSelectDate(dt){
 }
 
 /* Presence rendering */
-function populateTurmaSelects(){
-  const sel = document.getElementById('selTurmaPres'); sel.innerHTML = "<option value=''>-- selecione turma --</option>";
-  const prof = getProf(); if(!prof) return;
-  Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); });
-  sel.onchange = ()=>{ renderCalendar(); renderPresenceUI(); };
-}
-function renderPresenceUI(){
-  renderCalendar();
-  if(selectedDateIso) renderPresenceForDate(selectedDateIso);
-  else document.getElementById('listaPresencaArea').innerHTML = "<div class='small'>Selecione um dia no calendário flutuante.</div>";
-}
-document.getElementById('btnReloadPres').addEventListener('click', ()=> renderPresenceUI());
+function populateTurmaSelects() {
+  const sel = document.getElementById('selTurmaPres');
+  sel.innerHTML = "<option value=''>-- selecione turma --</option>";
+  const prof = getProf();
+  if (!prof) return;
 
-function renderPresenceForDate(isoDate){
+  // preenche a lista de turmas
+  Object.keys(prof.turmas || {}).forEach(tn => {
+    const o = document.createElement('option');
+    o.value = tn;
+    o.textContent = tn;
+    sel.appendChild(o);
+  });
+
+  // corrigido: atualiza corretamente a UI quando muda a turma
+  sel.onchange = () => {
+    renderCalendar();  // atualiza o calendário flutuante
+    renderPresenceUI(); // atualiza a área de presença
+  };
+}
+
+function renderPresenceUI() {
+  renderCalendar();
+  if (selectedDateIso)
+    renderPresenceForDate(selectedDateIso);
+  else
+    document.getElementById('listaPresencaArea').innerHTML =
+      "<div class='small'>Selecione um dia no calendário flutuante.</div>";
+}
+
+document.getElementById('btnReloadPres').addEventListener('click', () => renderPresenceUI());
+
+function renderPresenceForDate(isoDate) {
   const selTurma = document.getElementById('selTurmaPres').value;
-  const prof = getProf(); if(!prof) return;
-  const area = document.getElementById('listaPresencaArea'); area.innerHTML = '';
-  if(!selTurma){ area.innerHTML = "<div class='small'>Selecione uma turma antes.</div>"; return; }
-  const turma = prof.turmas[selTurma]; if(!turma){ area.innerHTML = "<div class='small'>Turma inválida.</div>"; return; }
+  const prof = getProf();
+  if (!prof) return;
+
+  const area = document.getElementById('listaPresencaArea');
+  area.innerHTML = '';
+
+  if (!selTurma) {
+    area.innerHTML = "<div class='small'>Selecione uma turma antes.</div>";
+    return;
+  }
+
+  const turma = prof.turmas[selTurma];
+  if (!turma) {
+    area.innerHTML = "<div class='small'>Turma inválida.</div>";
+    return;
+  }
+
   turma.presencas = turma.presencas || {};
   turma.presencas[isoDate] = turma.presencas[isoDate] || {}; // slot -> array
-  const dt = new Date(isoDate); const wk = dt.getDay();
-  const daySlots = (prof.horarios && prof.horarios[wk]) ? prof.horarios[wk] : ["","","","","",""];
-  // ensure 6 slots array
-  for(let slot=0; slot<6; slot++){
-    const card = document.createElement('div'); card.className='bloco-horario';
-    const labelTimes = ["1ª 07:00–07:45","2ª 07:45–08:30","3ª 08:30–09:15","4ª 09:15–10:00","5ª 10:20–11:05","6ª 11:05–11:50"];
-    const title = document.createElement('h4'); title.textContent = labelTimes[slot]; card.appendChild(title);
-    const sub = document.createElement('div'); sub.className='small'; sub.style.marginBottom='8px';
+
+  const dt = new Date(isoDate);
+  const wk = dt.getDay();
+  const daySlots = (prof.horarios && prof.horarios[wk]) ? prof.horarios[wk] : ["", "", "", "", "", ""];
+
+  for (let slot = 0; slot < 6; slot++) {
+    const card = document.createElement('div');
+    card.className = 'bloco-horario';
+
+    const labelTimes = [
+      "1ª 07:00–07:45", "2ª 07:45–08:30",
+      "3ª 08:30–09:15", "4ª 09:15–10:00",
+      "5ª 10:20–11:05", "6ª 11:05–11:50"
+    ];
+
+    const title = document.createElement('h4');
+    title.textContent = labelTimes[slot];
+    card.appendChild(title);
+
+    const sub = document.createElement('div');
+    sub.className = 'small';
+    sub.style.marginBottom = '8px';
     sub.textContent = (daySlots[slot] && daySlots[slot] !== "") ? daySlots[slot] : "(sem turma)";
     card.appendChild(sub);
-    if(daySlots[slot] !== selTurma){
-      const note = document.createElement('div'); note.className='small'; note.textContent = "—";
+
+    if (daySlots[slot] !== selTurma) {
+      const note = document.createElement('div');
+      note.className = 'small';
+      note.textContent = "—";
       card.appendChild(note);
     } else {
-      const list = document.createElement('div'); list.className='pres-list';
+      const list = document.createElement('div');
+      list.className = 'pres-list';
       turma.presencas[isoDate][slot] = turma.presencas[isoDate][slot] || Array(turma.alunos.length).fill("P");
-      turma.alunos.forEach((al,idx)=>{
-        const row = document.createElement('div'); row.className='pres-line';
-        const name = document.createElement('div'); name.className='name'; name.textContent = `${idx+1}. ${al}`;
-        const btn = document.createElement('button'); btn.className='pres-btn';
-        btn.dataset.idx = idx; btn.dataset.slot = slot; btn.dataset.al = al;
-        if(turma.presencas[isoDate][slot][idx] === "F"){ btn.classList.remove('present'); btn.textContent = "❌"; } else { btn.classList.add('present'); btn.textContent = "✅"; }
-        btn.onclick = (e)=> togglePresenceBtn(e.currentTarget, isoDate, selTurma);
-        row.appendChild(name); row.appendChild(btn); list.appendChild(row);
+
+      turma.alunos.forEach((al, idx) => {
+        const row = document.createElement('div');
+        row.className = 'pres-line';
+
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = `${idx + 1}. ${al}`;
+
+        const btn = document.createElement('button');
+        btn.className = 'pres-btn';
+        btn.dataset.idx = idx;
+        btn.dataset.slot = slot;
+        btn.dataset.al = al;
+
+        if (turma.presencas[isoDate][slot][idx] === "F") {
+          btn.classList.remove('present');
+          btn.textContent = "❌";
+        } else {
+          btn.classList.add('present');
+          btn.textContent = "✅";
+        }
+
+        btn.onclick = (e) => togglePresenceBtn(e.currentTarget, isoDate, selTurma);
+
+        row.appendChild(name);
+        row.appendChild(btn);
+        list.appendChild(row);
       });
+
       card.appendChild(list);
     }
+
     area.appendChild(card);
+  }
+    }
   }
   // save
   store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store);
@@ -855,3 +929,4 @@ function populateTurmaSelects(){ populateTurmaSelects(); } // wrapper (no-op)
 </script>
 </body>
 </html>
+
