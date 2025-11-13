@@ -657,7 +657,7 @@ function populateTurmaSelects(){
   const sel = document.getElementById('selTurmaPres'); sel.innerHTML = "<option value=''>-- selecione turma --</option>";
   const prof = getProf(); if(!prof) return;
   Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); });
-  sel.onchange = ()=>{ drawCal(); renderPresenceUI(); };
+  sel.onchange = ()=>{ renderCalendar(); renderPresenceUI(); };
 }
 function renderPresenceUI(){
   renderCalendar();
