@@ -12,7 +12,7 @@
 }
 *{box-sizing:border-box}
 body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#0b2b3a;-webkit-font-smoothing:antialiased}
-.header{background:linear-gradient(90deg,var(--gov-dark),var(--gov-mid));color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-betwen;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+.header{background:linear-gradient(90deg,var(--gov-dark),var(--gov-mid));color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
 .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px}
 .container{max-width:1100px;margin:16px auto;padding:12px}
 .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
@@ -737,146 +737,41 @@ function togglePresenceBtn(button, isoDate, turmaName){
 }
 
 /* ---------- Notas ---------- */
-/* ---------- PRESENÇA ---------- */
-
-// preenche o seletor de turmas
-function populateTurmasSelects() {
-  const sel = document.getElementById('selTurmaPresenca');
-  sel.innerHTML = ''; // limpa antes de preencher
-
-  const prof = getProf();
-
-  if (!prof) {
-    alert("Sessão expirada. Faça login novamente.");
-    window.location.reload();
-    return;
-  }
-
-  const turmas = prof.turmas || {};
-  const nomes = Object.keys(turmas);
-
-  if (nomes.length === 0) {
-    const opt = document.createElement('option');
-    opt.textContent = 'Nenhuma turma cadastrada';
-    opt.disabled = true;
-    opt.selected = true;
-    sel.appendChild(opt);
-    return;
-  }
-
-  nomes.forEach(nome => {
-    const opt = document.createElement('option');
-    opt.value = nome;
-    opt.textContent = nome;
-    sel.appendChild(opt);
-  });
-
-  sel.onchange = () => {
-    drawCal();
-    renderPresenceUI();
-  };
+function populateTurmaSelectsForNotas(){
+  const sel = document.getElementById('selTurmaNotas'); sel.innerHTML = "<option value=''>-- selecione turma --</option>";
+  const prof = getProf(); if(!prof) return;
+  Object.keys(prof.turmas||{}).forEach(tn=>{ const o=document.createElement('option'); o.value=tn; o.textContent=tn; sel.appendChild(o); });
+  document.getElementById('btnLoadNotas').onclick = ()=> loadNotas();
 }
-
-// renderiza o painel de presença
-function renderPresenceUI() {
-  const prof = getProf();
-  if (!prof) return;
-
-  const selTurma = document.getElementById('selTurmaPresenca');
-  const turmaNome = selTurma.value;
-  const area = document.getElementById('listaPresencaArea');
-
-  area.innerHTML = '';
-
-  if (!turmaNome) {
-    area.innerHTML = '<div class="small">Selecione uma turma acima.</div>';
-    return;
-  }
-
-  const turma = prof.turmas[turmaNome];
-  if (!turma) {
-    area.innerHTML = '<div class="small">Turma não encontrada.</div>';
-    return;
-  }
-
-  const lista = document.createElement('div');
-  lista.className = 'lista-presenca';
-
-  turma.alunos.forEach((aluno, i) => {
-    const linha = document.createElement('div');
-    linha.className = 'linha-presenca';
-    linha.innerHTML = `
-      <span class="nome">${aluno}</span>
-      <button class="btn-presente" onclick="togglePresenca('${turmaNome}', ${i}, true)">✅ Presente</button>
-      <button class="btn-falta" onclick="togglePresenca('${turmaNome}', ${i}, false)">❌ Falta</button>
-    `;
-    lista.appendChild(linha);
+function loadNotas(){
+  const prof = getProf(); if(!prof) return;
+  const turmaName = document.getElementById('selTurmaNotas').value; const area=document.getElementById('notasArea'); area.innerHTML='';
+  if(!turmaName) return area.textContent='Selecione turma';
+  const t = prof.turmas[turmaName];
+  const table = document.createElement('table'); table.className='table';
+  table.innerHTML = `<thead><tr><th>Aluno</th><th>U1 (0-10)</th><th>U2</th><th>U3</th><th>Total (0-30)</th><th>Média (÷3)</th><th>Status</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  t.alunos.forEach((al,idx)=>{
+    const notas = t.notas[idx] || [0,0,0];
+    const total = Number(notas[0]||0)+Number(notas[1]||0)+Number(notas[2]||0);
+    const media = (total/3).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="text-align:left;padding-left:8px">${al}</td>
+      <td><input type="number" min="0" max="10" value="${notas[0]||0}" data-i="${idx}" data-u="0" class="notaInp"/></td>
+      <td><input type="number" min="0" max="10" value="${notas[1]||0}" data-i="${idx}" data-u="1" class="notaInp"/></td>
+      <td><input type="number" min="0" max="10" value="${notas[2]||0}" data-i="${idx}" data-u="2" class="notaInp"/></td>
+      <td>${total}</td><td>${media}</td><td>${ total>=15 ? '<span class="status-green">Aprovado</span>' : '<span class="status-red">Recuperação</span>' }</td>`;
+    tbody.appendChild(tr);
   });
-
-  area.appendChild(lista);
-}
-
-// alterna entre presença e falta
-function togglePresenca(turmaNome, index, presente) {
-  const prof = getProf();
-  if (!prof) return;
-
-  const turma = prof.turmas[turmaNome];
-  if (!turma) return;
-
-  if (!turma.presencas) turma.presencas = {};
-  const data = selectedDateIso || new Date().toISOString().slice(0, 10);
-  if (!turma.presencas[data]) turma.presencas[data] = [];
-
-  turma.presencas[data][index] = presente ? 'P' : 'F';
-
-  // salva de volta no localStorage
-  const dados = JSON.parse(localStorage.getItem('diario_single_v2')) || {};
-  dados[prof.id] = prof;
-  localStorage.setItem('diario_single_v2', JSON.stringify(dados));
-
-  renderPresenceUI();
-  console.log(`Aluno ${index} da turma ${turmaNome} marcado como ${presente ? 'Presente' : 'Falta'} em ${data}`);
-}
-
-// renderiza as presenças de uma data específica
-function renderPresenceForDate(isoDate) {
-  const selTurma = document.getElementById('selTurmaPresenca');
-  const prof = getProf();
-  if (!prof) return;
-
-  const turma = prof.turmas[selTurma.value];
-  const area = document.getElementById('listaPresencaArea');
-  area.innerHTML = '';
-
-  if (!selTurma.value) {
-    area.innerHTML = '<div class="small">Selecione uma turma acima.</div>';
-    return;
-  }
-
-  if (!turma || !turma.alunos) {
-    area.innerHTML = '<div class="small">Turma sem alunos cadastrados.</div>';
-    return;
-  }
-
-  const data = isoDate || new Date().toISOString().slice(0, 10);
-  const presencas = turma.presencas?.[data] || [];
-
-  const lista = document.createElement('div');
-  lista.className = 'lista-presenca';
-
-  turma.alunos.forEach((aluno, i) => {
-    const status = presencas[i] === 'P' ? '✅ Presente' :
-                   presencas[i] === 'F' ? '❌ Falta' :
-                   '—';
-
-    const linha = document.createElement('div');
-    linha.className = 'linha-presenca';
-    linha.innerHTML = `<span class="nome">${aluno}</span> <span>${status}</span>`;
-    lista.appendChild(linha);
+  table.appendChild(tbody); area.appendChild(table);
+  area.querySelectorAll('.notaInp').forEach(inp=>{
+    inp.onchange = (e)=>{
+      const i=parseInt(e.target.dataset.i,10), uidx=parseInt(e.target.dataset.u,10);
+      let v = Number(e.target.value)||0; if(v<0) v=0; if(v>10) v=10;
+      t.notas[i][uidx] = v; store[ sessionStorage.getItem('diario_user') ] = prof; saveStore(store); loadNotas();
+      showNotifNear(e.target, '✅ Nota atualizada', 'ok', 1200);
+    };
   });
-
-  area.appendChild(lista);
 }
 
 /* ---------- Recuperação ---------- */
